@@ -99,7 +99,7 @@ console.log('✅ File upload middleware configured (express-fileupload for teach
 
 // ======================= API ROUTES =======================
 // Health check (before other routes)
-app.get('/health', (req, res) => {
+app.get('/healthz', (req, res) => {
   res.json({ 
     status: 'ok',
     timestamp: new Date().toISOString(),
