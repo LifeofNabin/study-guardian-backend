@@ -34,15 +34,6 @@ import analyticsRoutes from './routes/analytics.js';
 
 // Socket.IO Import
 import initializeSocketIO from './socket/index.js';
-// After all imports in server.js
-console.log('🔍 Checking route imports:');
-console.log('authRoutes type:', typeof authRoutes);
-console.log('authRoutes:', authRoutes ? 'Loaded' : 'NOT LOADED');
-
-// Test if it has router methods
-if (authRoutes) {
-  console.log('authRoutes.stack length:', authRoutes.stack?.length || 0);
-}
 
 // ======================= INITIALIZATION =======================
 const app = express();
@@ -51,19 +42,16 @@ const httpServer = createServer(app);
 console.log('🚀 Initializing studyguardian Server...');
 
 // ======================= CORS CONFIGURATION =======================
-// ======================= CORS CONFIGURATION =======================
 const corsOptions = {
   origin: [
     'http://localhost:3000',
-    'https://studyguardian.vercel.app', // ✅ ADD THIS
-    'https://study-guardian-frontend.onrender.com',
-    'https://studyguardian.vercel.app' // Vercel domain
+    'https://studyguardian.vercel.app',
+    'https://study-guardian-frontend.onrender.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
-
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
@@ -72,7 +60,7 @@ console.log('✅ CORS configured');
 // ======================= SECURITY MIDDLEWARE =======================
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: false // Allow inline scripts for development
+  contentSecurityPolicy: false
 }));
 console.log('✅ Security headers configured');
 
@@ -82,7 +70,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 console.log('✅ Body parsers configured');
 
 // ======================= STATIC FILES =======================
-// Serve uploaded PDFs
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 console.log('✅ Static file serving configured');
 
@@ -91,9 +78,13 @@ app.use(passport.initialize());
 console.log('✅ Passport initialized');
 
 // ======================= DATABASE CONNECTION =======================
-// connectDB();
-// ======================= DATABASE CONNECTION =======================
-// ======================= DATABASE CONNECTION =======================
+console.log('🔍 MongoDB Configuration:');
+console.log('URI present:', !!process.env.MONGODB_URI);
+if (process.env.MONGODB_URI) {
+  const maskedURI = process.env.MONGODB_URI.replace(/:[^:@]+@/, ':***@');
+  console.log('Masked URI:', maskedURI);
+}
+
 const initializeDatabase = async () => {
   try {
     await connectDB();
@@ -101,24 +92,8 @@ const initializeDatabase = async () => {
   } catch (error) {
     console.error('❌ Database initialization failed:', error.message);
     console.log('⚠️ Server starting without database connection');
-    console.log('⚠️ Auth and data persistence will not work');
-    // Don't exit - let server start in degraded mode
   }
 };
-
-// Start database connection (don't await - let it run in background)
-initializeDatabase().catch(err => {
-  console.error('Unhandled database error:', err);
-});
-// Test MongoDB connection details
-console.log('🔍 MongoDB Configuration:');
-console.log('URI present:', !!process.env.MONGODB_URI);
-if (process.env.MONGODB_URI) {
-  console.log('URI length:', process.env.MONGODB_URI.length);
-  // Mask password in logs for security
-  const maskedURI = process.env.MONGODB_URI.replace(/:[^:@]+@/, ':***@');
-  console.log('Masked URI:', maskedURI);
-}
 
 initializeDatabase();
 
@@ -127,22 +102,28 @@ const io = initializeSocketIO(httpServer, app);
 console.log('✅ Socket.IO server initialized');
 
 // ======================= FILE UPLOAD MIDDLEWARE =======================
-// ✅ CRITICAL FIX: Apply express-fileupload ONLY to teacher routes
-// This prevents conflict with multer used in student routes
 const teacherFileUpload = fileUpload({
   createParentPath: true,
   limits: { 
-    fileSize: 10 * 1024 * 1024 // 10MB max file size
+    fileSize: 10 * 1024 * 1024
   },
   abortOnLimit: true,
   responseOnLimit: 'File size limit exceeded (max 10MB)',
   useTempFiles: false,
-  debug: false // Disable verbose logging
+  debug: false
 });
-console.log('✅ File upload middleware configured (express-fileupload for teachers, multer for students)');
+console.log('✅ File upload middleware configured');
 
-// ======================= API ROUTES =======================
-// Health check (before other routes)
+// ======================= HEALTH ENDPOINTS (FOR RENDER) =======================
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    service: 'studyguardian-backend',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 app.get('/healthz', (req, res) => {
   res.json({ 
     success: true,
@@ -153,17 +134,17 @@ app.get('/healthz', (req, res) => {
   });
 });
 
-// API Routes with conditional file upload middleware
+// ======================= API ROUTES =======================
 app.use('/api/auth', authRoutes);
-app.use('/api/rooms', teacherFileUpload, roomsRoutes); // ✅ Teacher uploads use express-fileupload
-app.use('/api/routines', routinesRoutes); // ✅ Student uploads use multer (defined in route)
+app.use('/api/rooms', teacherFileUpload, roomsRoutes);
+app.use('/api/routines', routinesRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/interactions', interactionsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/analytics', analyticsRoutes);
 console.log('✅ API routes registered');
 
-// Root endpoint
+// ======================= ROOT ENDPOINT =======================
 app.get('/', (req, res) => {
   res.json({ 
     message: 'studyguardian API is running',
@@ -204,23 +185,29 @@ httpServer.listen(PORT, () => {
   console.log(`📡 Port: ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API URL: http://localhost:${PORT}`);
-  console.log(`📤 Teacher uploads: express-fileupload`);
-  console.log(`📤 Student uploads: multer`);
   console.log(`📁 Upload directory: ${path.join(__dirname, 'uploads')}`);
   console.log('='.repeat(50));
 });
 
 // ======================= GRACEFUL SHUTDOWN =======================
+let isShuttingDown = false;
+
 process.on('SIGTERM', () => {
-  console.log('⚠️  SIGTERM signal received: closing HTTP server');
-  httpServer.close(() => {
-    console.log('✅ HTTP server closed');
-    process.exit(0);
-  });
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
+  console.log('⚠️  SIGTERM received - starting graceful shutdown (10s)');
+  
+  setTimeout(() => {
+    httpServer.close(() => {
+      console.log('✅ HTTP server closed');
+      process.exit(0);
+    });
+  }, 10000);
 });
 
 process.on('SIGINT', () => {
-  console.log('⚠️  SIGINT signal received: closing HTTP server');
+  console.log('⚠️  SIGINT received');
   httpServer.close(() => {
     console.log('✅ HTTP server closed');
     process.exit(0);
