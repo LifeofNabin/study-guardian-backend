@@ -133,7 +133,13 @@ app.get('/healthz', (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   });
 });
-
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date()
+  });
+});
 // ======================= API ROUTES =======================
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', teacherFileUpload, roomsRoutes);
