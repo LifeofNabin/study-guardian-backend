@@ -10,13 +10,27 @@ import mongoose from 'mongoose';
 
 export const connectDB = async () => {
   try {
+    // Check if MongoDB URI is provided
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI is not defined in environment variables');
+    }
+
+    console.log('🔍 Attempting MongoDB connection...');
+    console.log('URI present:', !!process.env.MONGODB_URI);
+    
+    // Mask password for logging
+    const maskedURI = process.env.MONGODB_URI.replace(/:[^:@]+@/, ':***@');
+    console.log('Masked URI:', maskedURI);
+
     // MongoDB connection options
     const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000, // Increased to 10 seconds
       socketTimeoutMS: 45000,
-      family: 4
+      family: 4,
+      retryWrites: true,
+      w: 'majority'
     };
 
     // Connect to MongoDB
@@ -24,6 +38,7 @@ export const connectDB = async () => {
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database: ${conn.connection.name}`);
+    console.log(`📈 Ready State: ${getConnectionStatus()}`);
 
     // Connection event listeners
     mongoose.connection.on('connected', () => {
@@ -31,24 +46,22 @@ export const connectDB = async () => {
     });
 
     mongoose.connection.on('error', (err) => {
-      console.error('❌ Mongoose connection error:', err);
+      console.error('❌ Mongoose connection error:', err.message);
     });
 
     mongoose.connection.on('disconnected', () => {
       console.log('⚠️  Mongoose disconnected from MongoDB');
     });
 
-    // Graceful shutdown
-    process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      console.log('🛑 Mongoose connection closed due to app termination');
-      process.exit(0);
-    });
+    return conn;
 
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
-    console.error('Full error:', error);
-    process.exit(1);
+    console.error('Error name:', error.name);
+    console.error('Error code:', error.code);
+    
+    // ⚠️ CRITICAL: DO NOT EXIT - throw error instead
+    throw error; // Let server.js handle whether to exit or continue
   }
 };
 

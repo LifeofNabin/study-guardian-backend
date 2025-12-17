@@ -91,7 +91,36 @@ app.use(passport.initialize());
 console.log('✅ Passport initialized');
 
 // ======================= DATABASE CONNECTION =======================
-connectDB();
+// connectDB();
+// ======================= DATABASE CONNECTION =======================
+// ======================= DATABASE CONNECTION =======================
+const initializeDatabase = async () => {
+  try {
+    await connectDB();
+    console.log('✅ Database initialized successfully');
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error.message);
+    console.log('⚠️ Server starting without database connection');
+    console.log('⚠️ Auth and data persistence will not work');
+    // Don't exit - let server start in degraded mode
+  }
+};
+
+// Start database connection (don't await - let it run in background)
+initializeDatabase().catch(err => {
+  console.error('Unhandled database error:', err);
+});
+// Test MongoDB connection details
+console.log('🔍 MongoDB Configuration:');
+console.log('URI present:', !!process.env.MONGODB_URI);
+if (process.env.MONGODB_URI) {
+  console.log('URI length:', process.env.MONGODB_URI.length);
+  // Mask password in logs for security
+  const maskedURI = process.env.MONGODB_URI.replace(/:[^:@]+@/, ':***@');
+  console.log('Masked URI:', maskedURI);
+}
+
+connectToDatabase();
 
 // ======================= SOCKET.IO SETUP =======================
 const io = initializeSocketIO(httpServer, app);
