@@ -120,7 +120,7 @@ if (process.env.MONGODB_URI) {
   console.log('Masked URI:', maskedURI);
 }
 
-connectToDatabase();
+initializeDatabase();
 
 // ======================= SOCKET.IO SETUP =======================
 const io = initializeSocketIO(httpServer, app);
