@@ -34,6 +34,15 @@ import analyticsRoutes from './routes/analytics.js';
 
 // Socket.IO Import
 import initializeSocketIO from './socket/index.js';
+// After all imports in server.js
+console.log('🔍 Checking route imports:');
+console.log('authRoutes type:', typeof authRoutes);
+console.log('authRoutes:', authRoutes ? 'Loaded' : 'NOT LOADED');
+
+// Test if it has router methods
+if (authRoutes) {
+  console.log('authRoutes.stack length:', authRoutes.stack?.length || 0);
+}
 
 // ======================= INITIALIZATION =======================
 const app = express();
@@ -42,13 +51,19 @@ const httpServer = createServer(app);
 console.log('🚀 Initializing studyguardian Server...');
 
 // ======================= CORS CONFIGURATION =======================
+// ======================= CORS CONFIGURATION =======================
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  origin: [
+    'http://localhost:3000',
+    'https://studyguardian.vercel.app', // ✅ ADD THIS
+    'https://study-guardian-frontend.onrender.com',
+    'https://studyguardian.vercel.app' // Vercel domain
+  ],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range']
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
+
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
@@ -101,6 +116,7 @@ console.log('✅ File upload middleware configured (express-fileupload for teach
 // Health check (before other routes)
 app.get('/healthz', (req, res) => {
   res.json({ 
+    success: true,
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
